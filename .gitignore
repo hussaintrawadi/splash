@@ -1,0 +1,23 @@
+# Gradle and Android Studio
+.gradle/
+.kotlin/
+build/
+/app/build/
+/local.properties
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Release signing: never commit the keystore or its passwords
+keystore.properties
+*.jks
+*.keystore
+
+# Build outputs
+*.apk
+*.aab
+
+# macOS
+.DS_Store
