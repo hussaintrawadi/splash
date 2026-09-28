@@ -98,6 +98,12 @@ reminder/    alarm scheduling, the call screen, ringtone service, boot receiver
 ui/          Compose screens: onboarding, home, history, rewards, settings
 ```
 
+## Install
+
+Download **Splash-1.0.apk** from the [latest release](https://github.com/hussaintrawadi/splash/releases/latest)
+and open it on your phone. Android asks you to allow installs from your browser or file
+manager the first time. It runs on Android 8.0 and later.
+
 ## Build and run
 
 1. Open the project in **Android Studio**, which ships with a compatible JDK.
