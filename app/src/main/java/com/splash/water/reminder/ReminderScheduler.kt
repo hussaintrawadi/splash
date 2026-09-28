@@ -64,8 +64,9 @@ class ReminderScheduler @Inject constructor(
             )
             alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(timeMillis, show), fire)
         } else {
-            // Fallback when exact alarms aren't permitted: inexact but allowed in Doze.
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeMillis, fire)
+            // Fallback when the exact-alarm permission isn't granted: still exact and fires in Doze
+            // (setExactAndAllowWhileIdle doesn't need SCHEDULE_EXACT_ALARM), just rate-limited.
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeMillis, fire)
         }
     }
 

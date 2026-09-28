@@ -11,6 +11,7 @@
   <img src="https://img.shields.io/badge/Android-8.0%20to%2015-3DDC84.svg" alt="Android 8.0 to 15">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF.svg" alt="Kotlin and Jetpack Compose">
   <img src="https://img.shields.io/badge/data-100%25%20offline-0ea5e9.svg" alt="100% offline">
+  <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/vibe%20coded%20with-Claude-D97757.svg" alt="Vibe coded with Claude"></a>
 </p>
 
 <p align="center">
@@ -31,6 +32,8 @@ days you hit your goal.
 
 It is fully offline. No account, no cloud, no analytics, and nothing leaves the phone.
 
+Splash is vibe coded with Claude. I decided what it should do and tested it on real phones; Claude wrote the code.
+
 ## Features
 
 **Reminders you cannot miss**
@@ -38,9 +41,9 @@ It is fully offline. No account, no cloud, no analytics, and nothing leaves the 
 - Five actions on the call screen: I drank, +250 ml, +500 ml, Snooze, and I'll drink later.
 - **Smart** mode spaces reminders across your waking hours and stops once you hit your goal.
   **Manual** mode uses your own intervals or fixed times.
-- Quiet when you are: it uses the call ringtone channel and does not ring on silent or Do Not
-  Disturb.
-- Seven built-in tones, or any sound on your phone.
+- Loud and long, like an alarm clock. It plays on the alarm stream at full volume, is heard over
+  music and earbuds, and stops by itself after a couple of minutes if you never answer.
+- Your phone's default alarm, seven built-in tones, or any sound on your phone.
 - Exact alarm-clock scheduling, so reminders survive Doze and battery optimisation.
 
 **Logging**
@@ -49,7 +52,7 @@ It is fully offline. No account, no cloud, no analytics, and nothing leaves the 
 - Today's log with undo for mis-taps.
 
 **Goals and progress**
-- A daily goal worked out from your weight, age, activity and climate, with a plain-English
+- A daily goal worked out from your weight, age, activity and the season, with a plain-English
   explanation. Always editable.
 - Daily reward cards at 25, 50, 75, 100 and 125 percent of your goal, with a theme that
   changes every day.
@@ -151,4 +154,4 @@ Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[MIT](LICENSE). Built by [Hussain Trawadi](https://github.com/hussaintrawadi).
+[MIT](LICENSE). Built by [Hussain Trawadi](https://github.com/hussaintrawadi), vibe coded with [Claude](https://claude.com/claude-code).

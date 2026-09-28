@@ -14,11 +14,12 @@ enum class ActivityLevel(val extraMl: Int, val label: String) {
     ACTIVE(800, "Very active"),
 }
 
-/** Climate; warmer climates add to the goal to account for sweating. */
-enum class Climate(val extraMl: Int, val label: String) {
-    TEMPERATE(0, "Temperate"),
-    WARM(250, "Warm"),
-    HOT(500, "Hot / humid"),
+/** Season; hotter/wetter seasons add water to the goal to account for sweating. */
+enum class Season(val extraMl: Int, val label: String) {
+    SUMMER(500, "Summer"),
+    MONSOON(250, "Monsoon"),
+    SPRING_FALL(0, "Spring / Autumn"),
+    WINTER(0, "Winter"),
 }
 
 /** How reminders are scheduled. */

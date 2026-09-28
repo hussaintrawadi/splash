@@ -25,6 +25,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
     @Inject lateinit var prefsRepo: PreferencesRepository
     @Inject lateinit var waterRepo: WaterRepository
+    @Inject lateinit var scheduler: ReminderScheduler
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ReminderConstants.ACTION_FIRE) return
@@ -52,6 +53,9 @@ class ReminderReceiver : BroadcastReceiver() {
                     .putExtra(ReminderConstants.EXTRA_SKIP_COUNT, prefs.skipCount)
                     .putExtra(ReminderConstants.EXTRA_LAST_DRINK, lastDrink)
                 runCatching { context.startActivity(activity) }
+
+                // Queue the NEXT reminder right now, so ignoring this one never stalls the chain.
+                runCatching { scheduler.reschedule() }
             } finally {
                 pending.finish()
             }

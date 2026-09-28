@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splash.water.data.prefs.PreferencesRepository
 import com.splash.water.domain.model.ActivityLevel
-import com.splash.water.domain.model.Climate
+import com.splash.water.domain.model.Season
 import com.splash.water.domain.model.ReminderMode
 import com.splash.water.domain.model.Sex
 import com.splash.water.reminder.ReminderScheduler
@@ -24,7 +24,7 @@ class OnboardingViewModel @Inject constructor(
         sex: Sex,
         age: Int?,
         activity: ActivityLevel,
-        climate: Climate,
+        season: Season,
         wakeStart: Int,
         wakeEnd: Int,
         mode: ReminderMode,
@@ -32,7 +32,7 @@ class OnboardingViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             if (useStats && weightKg != null) {
-                prefsRepo.updateProfile(weightKg, sex, age, activity, climate)
+                prefsRepo.updateProfile(weightKg, sex, age, activity, season)
             }
             prefsRepo.useAutoGoal()
             prefsRepo.setWakeWindow(wakeStart, wakeEnd)

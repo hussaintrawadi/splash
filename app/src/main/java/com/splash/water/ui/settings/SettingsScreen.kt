@@ -5,6 +5,8 @@ import android.content.Intent
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.compose.foundation.background
@@ -53,7 +55,7 @@ import com.splash.water.data.prefs.UserPreferences
 import com.splash.water.domain.DateUtils
 import com.splash.water.domain.GoalCalculator
 import com.splash.water.domain.model.ActivityLevel
-import com.splash.water.domain.model.Climate
+import com.splash.water.domain.model.Season
 import com.splash.water.domain.model.ReminderKind
 import com.splash.water.domain.model.ReminderMode
 import com.splash.water.domain.model.Sex
@@ -150,7 +152,7 @@ private fun BodyStatsSection(p: UserPreferences, vm: SettingsViewModel) {
     var ageText by remember(p.age) { mutableStateOf(p.age?.toString() ?: "") }
     var sex by remember(p.sex) { mutableStateOf(p.sex) }
     var activity by remember(p.activity) { mutableStateOf(p.activity) }
-    var climate by remember(p.climate) { mutableStateOf(p.climate) }
+    var season by remember(p.season) { mutableStateOf(p.season) }
 
     SettingsSection("Body stats") {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -176,11 +178,11 @@ private fun BodyStatsSection(p: UserPreferences, vm: SettingsViewModel) {
         Text("Activity", fontWeight = FontWeight.Medium)
         ChipSelector(ActivityLevel.entries, activity, { it.label }) { activity = it }
         Spacer(Modifier.height(8.dp))
-        Text("Climate", fontWeight = FontWeight.Medium)
-        ChipSelector(Climate.entries, climate, { it.label }) { climate = it }
+        Text("Season", fontWeight = FontWeight.Medium)
+        ChipSelector(Season.entries, season, { it.label }) { season = it }
         Spacer(Modifier.height(12.dp))
         Button(
-            onClick = { vm.saveProfile(weightText.toDoubleOrNull(), sex, ageText.toIntOrNull(), activity, climate) },
+            onClick = { vm.saveProfile(weightText.toDoubleOrNull(), sex, ageText.toIntOrNull(), activity, season) },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Save & recalculate goal") }
     }
@@ -278,21 +280,40 @@ private fun SoundSection(p: UserPreferences, vm: SettingsViewModel) {
         }
     }
 
-    // A short preview player for auditioning sounds (released on leave).
+    // A short preview player for auditioning sounds (released on leave). Plays on the alarm stream
+    // and stops after a few seconds so long tones don't run on forever.
     val preview = remember { mutableStateOf<MediaPlayer?>(null) }
+    val previewHandler = remember { Handler(Looper.getMainLooper()) }
     DisposableEffect(Unit) {
-        onDispose { runCatching { preview.value?.release() }; preview.value = null }
+        onDispose {
+            previewHandler.removeCallbacksAndMessages(null)
+            runCatching { preview.value?.release() }; preview.value = null
+        }
     }
-    fun play(resId: Int) {
+    fun preview(option: com.splash.water.reminder.SoundOption) {
+        previewHandler.removeCallbacksAndMessages(null)
         runCatching { preview.value?.release() }
-        val mp = MediaPlayer.create(context, resId)
-        preview.value = mp
-        mp?.setOnCompletionListener { it.release(); if (preview.value === it) preview.value = null }
-        mp?.start()
+        runCatching {
+            val mp = MediaPlayer().apply {
+                setAudioAttributes(
+                    android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                setDataSource(context, ReminderSounds.uriFor(context, option))
+                setOnPreparedListener { it.start() }
+                prepareAsync()
+            }
+            preview.value = mp
+            previewHandler.postDelayed({
+                runCatching { preview.value?.release() }; preview.value = null
+            }, 4000)
+        }
     }
 
     val isDeviceSound = !p.soundUri.isNullOrBlank() && !ReminderSounds.isBuiltin(p.soundUri)
-    // Reflect what will actually play: a chosen built-in, a device sound, or the default built-in.
+    // Reflect what will actually play: a chosen option, a device sound, or the default (system alarm).
     val selectedId = when {
         ReminderSounds.isBuiltin(p.soundUri) -> ReminderSounds.optionFor(p.soundUri)?.id
         isDeviceSound -> null
@@ -313,8 +334,8 @@ private fun SoundSection(p: UserPreferences, vm: SettingsViewModel) {
             SoundRow(
                 label = opt.label,
                 selected = selectedId == opt.id,
-                onSelect = { vm.setSoundUri(ReminderSounds.storageValue(opt)); play(opt.resId) },
-                onPreview = { play(opt.resId) },
+                onSelect = { vm.setSoundUri(ReminderSounds.storageValue(opt)); preview(opt) },
+                onPreview = { preview(opt) },
             )
         }
         SoundRow(
@@ -333,7 +354,7 @@ private fun SoundSection(p: UserPreferences, vm: SettingsViewModel) {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Rings like a call. It won't sound on silent or Do Not Disturb.",
+            "Rings like an alarm until you respond. \"Default alarm\" uses your phone's alarm sound.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
         )

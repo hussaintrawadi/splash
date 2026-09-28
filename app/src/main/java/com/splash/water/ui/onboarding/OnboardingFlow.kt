@@ -47,7 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.splash.water.domain.DateUtils
 import com.splash.water.domain.GoalCalculator
 import com.splash.water.domain.model.ActivityLevel
-import com.splash.water.domain.model.Climate
+import com.splash.water.domain.model.Season
 import com.splash.water.domain.model.ReminderMode
 import com.splash.water.domain.model.Sex
 import com.splash.water.ui.settings.ChipSelector
@@ -71,7 +71,7 @@ fun OnboardingFlow(
     var ageText by remember { mutableStateOf("") }
     var sex by remember { mutableStateOf(Sex.UNSPECIFIED) }
     var activity by remember { mutableStateOf(ActivityLevel.LIGHT) }
-    var climate by remember { mutableStateOf(Climate.TEMPERATE) }
+    var season by remember { mutableStateOf(Season.SPRING_FALL) }
     var wakeStart by remember { mutableIntStateOf(8 * 60) }
     var wakeEnd by remember { mutableIntStateOf(22 * 60) }
     var mode by remember { mutableStateOf(ReminderMode.SMART) }
@@ -81,7 +81,7 @@ fun OnboardingFlow(
     ) {}
 
     val previewGoal = if (useStats) {
-        GoalCalculator.computeGoal(weightText.toDoubleOrNull(), sex, ageText.toIntOrNull(), activity, climate)
+        GoalCalculator.computeGoal(weightText.toDoubleOrNull(), sex, ageText.toIntOrNull(), activity, season)
     } else {
         GoalCalculator.DEFAULT_GOAL_ML
     }
@@ -111,7 +111,7 @@ fun OnboardingFlow(
                     0 -> Welcome()
                     1 -> BodyStats(
                         useStats, { useStats = it }, weightText, { weightText = it }, ageText, { ageText = it },
-                        sex, { sex = it }, activity, { activity = it }, climate, { climate = it },
+                        sex, { sex = it }, activity, { activity = it }, season, { season = it },
                     )
                     2 -> GoalPreview(previewGoal, useStats)
                     3 -> Schedule(
@@ -147,7 +147,7 @@ fun OnboardingFlow(
                             step++
                         } else {
                             viewModel.complete(
-                                useStats, weightText.toDoubleOrNull(), sex, ageText.toIntOrNull(), activity, climate,
+                                useStats, weightText.toDoubleOrNull(), sex, ageText.toIntOrNull(), activity, season,
                                 wakeStart, wakeEnd, mode, onDone,
                             )
                         }
@@ -187,7 +187,7 @@ private fun BodyStats(
     ageText: String, onAge: (String) -> Unit,
     sex: Sex, onSex: (Sex) -> Unit,
     activity: ActivityLevel, onActivity: (ActivityLevel) -> Unit,
-    climate: Climate, onClimate: (Climate) -> Unit,
+    season: Season, onSeason: (Season) -> Unit,
 ) {
     OnboardCard("Tell us about you", "We'll estimate a healthy daily goal. You can change it anytime.") {
         Row(
@@ -211,8 +211,8 @@ private fun BodyStats(
             Text("Activity", fontWeight = FontWeight.Medium)
             ChipSelector(ActivityLevel.entries, activity, { it.label }, onSelect = onActivity)
             Spacer(Modifier.height(8.dp))
-            Text("Climate", fontWeight = FontWeight.Medium)
-            ChipSelector(Climate.entries, climate, { it.label }, onSelect = onClimate)
+            Text("Season", fontWeight = FontWeight.Medium)
+            ChipSelector(Season.entries, season, { it.label }, onSelect = onSeason)
         } else {
             Spacer(Modifier.height(8.dp))
             Text("No problem, we'll start you at ${GoalCalculator.DEFAULT_GOAL_ML} ml/day.")

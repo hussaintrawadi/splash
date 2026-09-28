@@ -61,9 +61,10 @@ advice**, and the app says so.
   **Manual** (custom intervals and/or fixed clock times).
 - Reminders appear as a **full-screen, call-style alert** that shows even over the lock screen.
 - Rings until you act, five actions: **I drank · +250 ml · +500 ml · Snooze · I'll drink later**.
-- **Respects silent & Do Not Disturb**, it behaves like a phone call, so it won't ring when you've
-  silenced the phone.
-- **7 built-in tones** + the option to pick any sound on your device, each with an in-app preview.
+- **Loud and long, like an alarm clock**: plays on the alarm stream at full volume over a wake lock,
+  so it keeps ringing (over earbuds or music too) until you respond, with a safety auto-stop.
+- **"Default alarm"** (your phone's alarm sound) plus **7 built-in tones** or any sound on your device,
+  each with an in-app preview.
 - A gentle **nudge** if you skip "I'll drink later" five times in a row.
 
 **Goals**
@@ -92,7 +93,7 @@ advice**, and the app says so.
 <img src="screenshots/01-onboarding.png" width="240" align="right" alt="Onboarding" />
 
 A short, friendly flow: a welcome ("Welcome to Splash, your playful hydration buddy"), optional body
-stats (weight, age, sex, activity, climate) that preview your computed goal in real time, your waking
+stats (weight, age, sex, activity, season) that preview your computed goal in real time, your waking
 window, reminder mode, and the permission grants. Skipping stats falls back to a sensible default goal.
 
 ### 4.2 Home / Today
@@ -167,9 +168,10 @@ posts a **Call-category** notification with a full-screen intent, so the alert a
 phone is locked or unlocked, not just as a status-bar line. A foreground service plays the chosen tone
 on a loop until you pick an action.
 
-**Quiet when you are.** The sound uses the phone's **ringtone (call) channel** and **does not bypass
-Do Not Disturb**. Before ringing it checks the ringer: on **silent / vibrate / DND** it stays quiet
-(still showing the screen, and buzzing only if you're on vibrate). Just like a call you've silenced.
+**Impossible to miss.** The sound plays on the **alarm stream** at full volume, takes audio focus
+(so it's heard over music and earbuds), and is held up by a **wake lock** so it keeps ringing even
+with the screen off. The next reminder is queued the moment one fires, so ignoring a reminder never
+stalls the chain. A safety timer stops the ring after a couple of minutes if you never respond.
 
 **Actions.** `I drank` (logs your default amount) · `+250 ml` · `+500 ml` · `Snooze` (re-fires after
 your snooze length) · `I'll drink later` (dismisses). Logging anything resets the skip counter; five
@@ -216,7 +218,7 @@ The auto goal targets the water you actively **drink** and is built from cited g
   33 for 30-55, 30 over 55.
 - **Sex:** women are scaled ×0.95 (lower fraction of body water).
 - **Activity:** +0 / +300 / +550 / +800 mL for sedentary → very active (covers sweat losses).
-- **Climate:** +0 / +250 / +500 mL for temperate / warm / hot.
+- **Season:** +0 / +250 / +500 mL for spring/autumn / monsoon / summer (winter stays at base).
 - **Clamped** to **1,500-4,000 mL/day**; if weight is unknown it falls back to a sex-based Adequate
   Intake (≈3,000 mL men / 2,300 mL women).
 

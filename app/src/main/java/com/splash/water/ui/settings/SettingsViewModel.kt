@@ -8,7 +8,7 @@ import com.splash.water.data.prefs.UserPreferences
 import com.splash.water.data.repo.ReminderSlotRepository
 import com.splash.water.domain.GoalCalculator
 import com.splash.water.domain.model.ActivityLevel
-import com.splash.water.domain.model.Climate
+import com.splash.water.domain.model.Season
 import com.splash.water.domain.model.ReminderMode
 import com.splash.water.domain.model.Sex
 import com.splash.water.domain.model.ThemeMode
@@ -35,9 +35,9 @@ class SettingsViewModel @Inject constructor(
 
     private fun reschedule() = viewModelScope.launch { scheduler.reschedule() }
 
-    fun saveProfile(weightKg: Double?, sex: Sex, age: Int?, activity: ActivityLevel, climate: Climate) {
+    fun saveProfile(weightKg: Double?, sex: Sex, age: Int?, activity: ActivityLevel, season: Season) {
         viewModelScope.launch {
-            prefsRepo.updateProfile(weightKg, sex, age, activity, climate)
+            prefsRepo.updateProfile(weightKg, sex, age, activity, season)
             scheduler.reschedule()
         }
     }

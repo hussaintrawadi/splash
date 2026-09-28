@@ -1,16 +1,19 @@
 package com.splash.water.reminder
 
-import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -18,17 +21,21 @@ import androidx.core.app.ServiceCompat
 import com.splash.water.reminder.ReminderConstants.EXTRA_AMOUNT
 
 /**
- * Foreground service that plays a looping alarm sound + vibration and shows the ringing reminder
- * notification. It keeps going until an action (Drank / Snooze / Dismiss) stops it, by design,
- * so the user has to consciously respond.
- *
- * Needed values are passed as intent extras (already read from prefs by [ReminderReceiver]) so the
- * service can call startForeground immediately without any async work.
+ * Foreground service that plays a loud, looping ALARM sound + vibration and shows the ringing
+ * reminder notification. It rings like an alarm clock: on the alarm stream at full volume, over a
+ * wake lock so it keeps playing with the screen off, and holding audio focus so it plays over music
+ * and earbuds. It keeps ringing until the user acts (Drank / Snooze / Dismiss), with a safety
+ * auto-stop so it can never ring forever.
  */
 class ReminderSoundService : Service() {
 
     private var player: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var audioManager: AudioManager? = null
+    private var focusRequest: AudioFocusRequest? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private val autoStop = Runnable { stopEverything() }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -55,49 +62,70 @@ class ReminderSoundService : Service() {
             startForeground(ReminderConstants.FOREGROUND_NOTIF_ID, notification)
         }
 
-        // Respect the user's ringer: never ring on silent or while Do Not Disturb is active.
-        val silenced = isSilencedBySystem()
-        if (soundEnabled && !silenced) startSound(soundUri)
-        // Vibrate unless fully silenced (vibrate ringer mode still gets a buzz).
-        if (vibrate && !isVibrationSuppressed()) startVibration()
+        acquireWakeLock()
+        // Ring like an alarm: always sound (alarms are meant to be heard, even on silent/vibrate).
+        if (soundEnabled) startSound(soundUri)
+        if (vibrate) startVibration()
+
+        // Safety net: never ring longer than this even if the user never taps a button.
+        handler.removeCallbacks(autoStop)
+        handler.postDelayed(autoStop, MAX_RING_MS)
         return START_STICKY
     }
 
-    /** True when the phone is on silent/vibrate or Do Not Disturb, so we shouldn't play a sound. */
-    private fun isSilencedBySystem(): Boolean {
-        val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        if (am.ringerMode != AudioManager.RINGER_MODE_NORMAL) return true
-        return isDndActive()
-    }
-
-    /** Under full-silence DND no buzz either; otherwise vibrate is allowed. */
-    private fun isVibrationSuppressed(): Boolean {
-        val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        if (am.ringerMode == AudioManager.RINGER_MODE_SILENT) return true
-        val nm = getSystemService(NotificationManager::class.java)
-        return nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
-    }
-
-    private fun isDndActive(): Boolean {
-        val nm = getSystemService(NotificationManager::class.java)
-        val filter = nm.currentInterruptionFilter
-        return filter != NotificationManager.INTERRUPTION_FILTER_ALL &&
-            filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN
+    private fun acquireWakeLock() {
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        @Suppress("DEPRECATION")
+        wakeLock = pm.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            "splash:reminder",
+        ).also { runCatching { it.acquire(MAX_RING_MS + 5_000) } }
     }
 
     private fun startSound(soundUri: String?) {
+        val attrs = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
+        // Duck other audio / take focus so the alarm is clearly heard over music and on earbuds.
+        audioManager = (getSystemService(Context.AUDIO_SERVICE) as AudioManager).also { am ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(attrs)
+                    .build()
+                runCatching { am.requestAudioFocus(focusRequest!!) }
+            } else {
+                @Suppress("DEPRECATION")
+                runCatching {
+                    am.requestAudioFocus(null, AudioManager.STREAM_ALARM, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                }
+            }
+        }
         runCatching {
             val uri: Uri = ReminderSounds.resolve(this, soundUri)
             player = MediaPlayer().apply {
-                // Ringtone usage = "call" category: respects the ringer and DND like a phone call.
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
+                setAudioAttributes(attrs)
                 setDataSource(this@ReminderSoundService, uri)
                 isLooping = true
+                setVolume(1f, 1f)
+                setOnPreparedListener { it.start() }
+                setOnErrorListener { _, _, _ -> playFallbackAlarm(attrs); true }
+                prepareAsync()
+            }
+        }.onFailure { playFallbackAlarm(attrs) }
+    }
+
+    /** If the chosen sound can't be played for any reason, fall back to the system alarm tone. */
+    private fun playFallbackAlarm(attrs: AudioAttributes) {
+        runCatching {
+            player?.release()
+            val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+                ?: android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI ?: return
+            player = MediaPlayer().apply {
+                setAudioAttributes(attrs)
+                setDataSource(this@ReminderSoundService, uri)
+                isLooping = true
+                setVolume(1f, 1f)
                 prepare()
                 start()
             }
@@ -112,16 +140,30 @@ class ReminderSoundService : Service() {
             getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
         vibrator = vib
-        val pattern = longArrayOf(0, 450, 350, 450, 1600)
+        val pattern = longArrayOf(0, 500, 400, 500, 1200)
         vib.vibrate(VibrationEffect.createWaveform(pattern, 0))
     }
 
     private fun stopEverything() {
+        handler.removeCallbacks(autoStop)
         runCatching { player?.stop() }
         runCatching { player?.release() }
         player = null
+        runCatching {
+            val am = audioManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                focusRequest?.let { am?.abandonAudioFocusRequest(it) }
+            } else {
+                @Suppress("DEPRECATION")
+                am?.abandonAudioFocus(null)
+            }
+        }
+        audioManager = null
+        focusRequest = null
         runCatching { vibrator?.cancel() }
         vibrator = null
+        runCatching { if (wakeLock?.isHeld == true) wakeLock?.release() }
+        wakeLock = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -135,6 +177,9 @@ class ReminderSoundService : Service() {
         const val EXTRA_SOUND = "extra_sound_enabled"
         const val EXTRA_VIBRATE = "extra_vibrate"
         const val EXTRA_SOUND_URI = "extra_sound_uri"
+
+        /** Ring for at most this long if the user never responds (2 minutes). */
+        private const val MAX_RING_MS = 120_000L
 
         fun start(
             context: Context,

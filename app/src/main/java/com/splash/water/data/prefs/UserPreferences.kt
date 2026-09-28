@@ -2,7 +2,7 @@ package com.splash.water.data.prefs
 
 import com.splash.water.domain.GoalCalculator
 import com.splash.water.domain.model.ActivityLevel
-import com.splash.water.domain.model.Climate
+import com.splash.water.domain.model.Season
 import com.splash.water.domain.model.ReminderMode
 import com.splash.water.domain.model.Sex
 import com.splash.water.domain.model.ThemeMode
@@ -14,7 +14,7 @@ data class UserPreferences(
     val sex: Sex = Sex.UNSPECIFIED,
     val age: Int? = null,
     val activity: ActivityLevel = ActivityLevel.LIGHT,
-    val climate: Climate = Climate.TEMPERATE,
+    val season: Season = Season.SPRING_FALL,
     val goalIsAuto: Boolean = true,
     val manualGoalMl: Int = GoalCalculator.DEFAULT_GOAL_ML,
     val wakeStartMinute: Int = 8 * 60,   // 08:00
@@ -34,7 +34,7 @@ data class UserPreferences(
     /** The effective daily goal: auto-computed from body stats, or the manual override. */
     val goalMl: Int
         get() = if (goalIsAuto) {
-            GoalCalculator.computeGoal(weightKg, sex, age, activity, climate)
+            GoalCalculator.computeGoal(weightKg, sex, age, activity, season)
         } else {
             GoalCalculator.clamp(manualGoalMl)
         }
